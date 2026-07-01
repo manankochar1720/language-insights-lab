@@ -1,0 +1,6 @@
+api/local.settings.json
+api/.venv/
+api/__pycache__/
+*.pyc
+.env
+node_modules/

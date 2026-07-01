@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Language Insights Lab</title>
+<style>
+  :root{
+    --ink:#1c2521;
+    --paper:#f5f2ea;
+    --paper-raised:#fffdf7;
+    --rule:#d8d2c2;
+    --accent:#3b6e5c;      /* ink-green */
+    --accent-soft:#e4ede9;
+    --amber:#b8752f;       /* highlight for key phrases */
+    --amber-soft:#f6e6cf;
+    --redact:#20262b;
+    --pos:#3b6e5c;
+    --neg:#a5473a;
+    --neu:#8a8272;
+    --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, Menlo, monospace;
+    --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    line-height:1.5;
+  }
+  @font-face{
+    font-family:'Source Serif 4';
+    src:local('Georgia');
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 96px}
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:18px;
+    margin-bottom:8px;
+  }
+  .brand{display:flex;align-items:baseline;gap:12px}
+  .brand .mark{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.14em;
+    background:var(--ink);
+    color:var(--paper);
+    padding:3px 7px;
+  }
+  h1{
+    font-size:28px;
+    margin:0;
+    font-weight:600;
+    letter-spacing:-.01em;
+  }
+  header .tag{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--accent);
+    letter-spacing:.04em;
+  }
+  .lede{
+    font-size:15px;
+    color:#4b544e;
+    max-width:64ch;
+    margin:14px 0 32px;
+  }
+
+  .lab{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:20px;
+  }
+
+  .panel{
+    background:var(--paper-raised);
+    border:1px solid var(--rule);
+  }
+
+  textarea{
+    width:100%;
+    min-height:160px;
+    resize:vertical;
+    border:none;
+    background:transparent;
+    font-family:var(--serif);
+    font-size:16px;
+    color:var(--ink);
+    padding:18px;
+    outline:none;
+  }
+  textarea::placeholder{color:#9c9686}
+
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px 18px;
+    border-top:1px dashed var(--rule);
+    padding:14px 18px;
+  }
+  .toolbar .label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:#7b7566;
+    margin-right:2px;
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:var(--mono);
+    font-size:12.5px;
+    padding:6px 10px;
+    border:1px solid var(--rule);
+    background:var(--paper);
+    cursor:pointer;
+    user-select:none;
+    color:#4b544e;
+  }
+  .chip input{accent-color:var(--accent)}
+  .chip.active{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+    color:var(--ink);
+  }
+  .spacer{flex:1}
+  button#run{
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:.04em;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    padding:11px 20px;
+    cursor:pointer;
+    transition:opacity .15s ease;
+  }
+  button#run:hover{opacity:.85}
+  button#run:disabled{opacity:.45;cursor:progress}
+  .charcount{font-family:var(--mono);font-size:11px;color:#9c9686}
+
+  #status{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--accent);
+    min-height:18px;
+    margin-top:2px;
+  }
+  #status.error{color:var(--neg)}
+
+  .results{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+    margin-top:8px;
+  }
+  @media (min-width:760px){
+    .results{grid-template-columns:1fr 1fr}
+    .results .full{grid-column:1 / -1}
+  }
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--rule);
+    padding:18px 20px;
+  }
+  .card h2{
+    font-family:var(--mono);
+    font-size:11.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#7b7566;
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .card h2 .n{color:var(--accent)}
+
+  /* language */
+  .lang-face{display:flex;align-items:baseline;gap:10px}
+  .lang-face .name{font-size:22px;font-weight:600}
+  .lang-face .code{font-family:var(--mono);font-size:12px;color:#8a8272;border:1px solid var(--rule);padding:2px 6px}
+  .conf-bar{height:5px;background:var(--rule);margin-top:10px;position:relative}
+  .conf-bar span{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+
+  /* sentiment */
+  .stamp{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    padding:5px 12px;
+    border:2px solid currentColor;
+    transform:rotate(-2deg);
+  }
+  .stamp.positive{color:var(--pos)}
+  .stamp.negative{color:var(--neg)}
+  .stamp.neutral{color:var(--neu)}
+  .stamp.mixed{color:var(--amber)}
+  .score-rows{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .score-row{display:grid;grid-template-columns:70px 1fr 42px;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px}
+  .score-row .bar{height:8px;background:var(--rule);position:relative}
+  .score-row .bar span{position:absolute;left:0;top:0;bottom:0}
+  .score-row.positive .bar span{background:var(--pos)}
+  .score-row.negative .bar span{background:var(--neg)}
+  .score-row.neutral .bar span{background:var(--neu)}
+
+  /* key phrases */
+  .kp-text{font-size:15px}
+  .kp-text mark{
+    background:var(--amber-soft);
+    color:var(--ink);
+    padding:1px 2px;
+    border-bottom:2px solid var(--amber);
+  }
+  .kp-list{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+  .kp-list span{
+    font-family:var(--mono);font-size:11.5px;
+    background:var(--amber-soft);border:1px solid var(--amber);
+    padding:3px 8px;color:#6b4a1c;
+  }
+
+  /* entities */
+  .ent-list{display:flex;flex-wrap:wrap;gap:8px}
+  .ent-chip{
+    font-family:var(--mono);font-size:12px;
+    border:1px solid var(--accent);
+    padding:4px 8px 4px 4px;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .ent-chip b{font-weight:600}
+  .ent-chip .cat{
+    background:var(--accent);color:var(--paper);
+    font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 5px;
+  }
+
+  /* PII */
+  .pii-text{
+    font-family:var(--serif);font-size:15px;
+    background:var(--paper);border:1px dashed var(--rule);
+    padding:14px;white-space:pre-wrap;
+  }
+  .pii-text .blk{
+    background:var(--redact);color:var(--redact);
+    border-radius:2px;
+    padding:0 2px;
+  }
+  .pii-list{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+  .pii-list span{
+    font-family:var(--mono);font-size:11px;
+    background:#eee;border:1px solid #ccc;
+    padding:3px 7px;color:#444;
+    text-decoration:line-through;
+  }
+
+  /* summary */
+  .summary-text{font-size:16px;font-style:italic;color:#2c352f}
+  .summary-text::before{content:"“";font-size:22px;color:var(--accent)}
+  .summary-text::after{content:"”";font-size:22px;color:var(--accent)}
+
+  .empty{color:#9c9686;font-family:var(--mono);font-size:12.5px}
+  .err{color:var(--neg);font-family:var(--mono);font-size:12px}
+
+  footer{
+    margin-top:56px;
+    border-top:1px solid var(--rule);
+    padding-top:16px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:#9c9686;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <span class="mark">TXT/LANG</span>
+      <h1>Language Insights Lab</h1>
+    </div>
+    <span class="tag">Azure&nbsp;AI&nbsp;Language</span>
+  </header>
+  <p class="lede">
+    Paste any passage and run it through six analyses: language detection, sentiment,
+    key phrases, named entities, PII redaction, and an abstractive summary — each
+    powered by a single call to Azure AI Language.
+  </p>
+
+  <div class="lab">
+    <div class="panel">
+      <textarea id="input" placeholder="Paste a review, email, transcript, or article here…">Hi, this is Rohan Mehta from Pune. I ordered the wireless earbuds (order #48213) last Tuesday and honestly they exceeded expectations — battery life is fantastic and the noise cancellation is shockingly good for the price. My only gripe is the charging case feels a bit flimsy. You can reach me at rohan.mehta@example.com or +91 98765 43210 if you need anything else. Would definitely recommend to a friend.</textarea>
+      <div class="toolbar">
+        <span class="label">Run</span>
+        <label class="chip active"><input type="checkbox" value="language" checked> Language ID</label>
+        <label class="chip active"><input type="checkbox" value="sentiment" checked> Sentiment</label>
+        <label class="chip active"><input type="checkbox" value="keyPhrases" checked> Key phrases</label>
+        <label class="chip active"><input type="checkbox" value="entities" checked> Entities</label>
+        <label class="chip active"><input type="checkbox" value="pii" checked> PII redaction</label>
+        <label class="chip active"><input type="checkbox" value="summary" checked> Summary</label>
+        <span class="spacer"></span>
+        <span class="charcount" id="charcount">0 / 5120</span>
+        <button id="run">Analyze text →</button>
+      </div>
+    </div>
+    <div id="status"></div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <footer>
+    <span>No text is stored — each request goes straight to your Azure AI Language resource.</span>
+    <span id="quota-note"></span>
+  </footer>
+</div>
+
+<script>
+const input = document.getElementById('input');
+const runBtn = document.getElementById('run');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+const charcount = document.getElementById('charcount');
+const chips = Array.from(document.querySelectorAll('.chip'));
+
+function updateCharCount(){
+  const n = input.value.length;
+  charcount.textContent = `${n} / 5120`;
+  charcount.style.color = n > 5120 ? '#a5473a' : '#9c9686';
+}
+input.addEventListener('input', updateCharCount);
+updateCharCount();
+
+chips.forEach(chip => {
+  const box = chip.querySelector('input');
+  chip.addEventListener('click', (e) => {
+    if (e.target !== box) box.checked = !box.checked;
+    chip.classList.toggle('active', box.checked);
+  });
+});
+
+function selectedActions(){
+  return chips
+    .filter(c => c.querySelector('input').checked)
+    .map(c => c.querySelector('input').value);
+}
+
+function esc(s){
+  return (s || '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[m]));
+}
+
+function card(title, bodyHtml, full=false){
+  return `<div class="card${full ? ' full' : ''}"><h2>${title}</h2>${bodyHtml}</div>`;
+}
+
+function renderLanguage(res){
+  if (!res) return '';
+  const pct = Math.round(res.confidenceScore * 100);
+  return card('Language detected', `
+    <div class="lang-face">
+      <span class="name">${esc(res.name)}</span>
+      <span class="code">${esc(res.iso6391Name)}</span>
+    </div>
+    <div class="conf-bar"><span style="width:${pct}%"></span></div>
+    <div class="charcount" style="margin-top:6px">${pct}% confidence</div>
+  `);
+}
+
+function renderSentiment(res){
+  if (!res) return '';
+  const rows = ['positive','neutral','negative'].map(k => `
+    <div class="score-row ${k}">
+      <span>${k}</span>
+      <div class="bar"><span style="width:${Math.round(res.confidenceScores[k]*100)}%"></span></div>
+      <span>${Math.round(res.confidenceScores[k]*100)}%</span>
+    </div>
+  `).join('');
+  return card('Sentiment', `
+    <span class="stamp ${res.sentiment}">${esc(res.sentiment)}</span>
+    <div class="score-rows">${rows}</div>
+  `);
+}
+
+function highlightKeyPhrases(text, phrases){
+  if (!phrases.length) return esc(text);
+  // sort longest-first so overlapping/substring phrases don't double-wrap
+  const sorted = [...phrases].sort((a,b) => b.length - a.length);
+  let escaped = esc(text);
+  sorted.forEach(p => {
+    const safe = esc(p);
+    if (!safe.trim()) return;
+    const re = new RegExp(safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    escaped = escaped.replace(re, m => `<mark>${m}</mark>`);
+  });
+  return escaped;
+}
+
+function renderKeyPhrases(res, originalText){
+  if (!res) return '';
+  const highlighted = highlightKeyPhrases(originalText, res.keyPhrases);
+  const chipsHtml = res.keyPhrases.map(p => `<span>${esc(p)}</span>`).join('');
+  return card(`Key phrases <span class="n">${res.keyPhrases.length}</span>`, `
+    <div class="kp-text">${highlighted}</div>
+    <div class="kp-list">${chipsHtml || '<span class="empty">none found</span>'}</div>
+  `, true);
+}
+
+function renderEntities(res){
+  if (!res) return '';
+  const items = res.entities.map(e => `
+    <span class="ent-chip"><span class="cat">${esc(e.category)}</span><b>${esc(e.text)}</b></span>
+  `).join('');
+  return card(`Named entities <span class="n">${res.entities.length}</span>`, `
+    <div class="ent-list">${items || '<span class="empty">none found</span>'}</div>
+  `, true);
+}
+
+function renderPii(res){
+  if (!res) return '';
+  const items = res.entities.map(e => `<span>${esc(e.category)}: ${esc(e.text)}</span>`).join('');
+  return card(`PII redaction <span class="n">${res.entities.length}</span>`, `
+    <div class="pii-text">${esc(res.redactedText)}</div>
+    <div class="pii-list">${items || '<span class="empty">no PII detected</span>'}</div>
+  `, true);
+}
+
+function renderSummary(res){
+  if (!res) return '';
+  const text = res.summaries && res.summaries[0] ? res.summaries[0] : '';
+  return card('Abstractive summary', `
+    <p class="summary-text">${esc(text)}</p>
+  `, true);
+}
+
+function renderError(action, msg){
+  return card(action, `<p class="err">${esc(msg)}</p>`);
+}
+
+const RENDERERS = {
+  language: renderLanguage,
+  sentiment: renderSentiment,
+  keyPhrases: (res, text) => renderKeyPhrases(res, text),
+  entities: renderEntities,
+  pii: renderPii,
+  summary: renderSummary,
+};
+
+const LABELS = {
+  language: 'Language detected',
+  sentiment: 'Sentiment',
+  keyPhrases: 'Key phrases',
+  entities: 'Named entities',
+  pii: 'PII redaction',
+  summary: 'Abstractive summary',
+};
+
+async function run(){
+  const text = input.value.trim();
+  const actions = selectedActions();
+  if (!text){
+    statusEl.textContent = 'Paste some text first.';
+    statusEl.classList.add('error');
+    return;
+  }
+  if (!actions.length){
+    statusEl.textContent = 'Pick at least one analysis to run.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  runBtn.disabled = true;
+  statusEl.classList.remove('error');
+  statusEl.textContent = actions.includes('summary')
+    ? 'Analyzing… (summarization runs as a background job and can take a few seconds longer)'
+    : 'Analyzing…';
+  resultsEl.innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ text, actions })
+    });
+    const data = await resp.json();
+
+    if (!resp.ok){
+      statusEl.textContent = data.error || `Request failed (${resp.status})`;
+      statusEl.classList.add('error');
+      return;
+    }
+
+    let html = '';
+    for (const action of actions){
+      const result = data.results ? data.results[action] : undefined;
+      if (result){
+        html += RENDERERS[action](result, text);
+      } else if (data.errors && data.errors[action]){
+        html += renderError(LABELS[action], data.errors[action]);
+      }
+    }
+    resultsEl.innerHTML = html || '<p class="empty">No results returned.</p>';
+
+    const parts = [];
+    if (data.detectedLanguage) parts.push(`working language: ${data.detectedLanguage}`);
+    if (data.truncated) parts.push('text truncated to 5,120 characters');
+    statusEl.textContent = parts.length ? parts.join(' · ') : 'Done.';
+  } catch (err){
+    statusEl.textContent = 'Network error: ' + err.message;
+    statusEl.classList.add('error');
+  } finally {
+    runBtn.disabled = false;
+  }
+}
+
+runBtn.addEventListener('click', run);
+input.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') run();
+});
+</script>
+</body>
+</html>
